@@ -21,9 +21,15 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+/**
+ * @package    enrol_idpay
+ * @copyright  IDPay
+ * @author     Mohammad Nabipour
+ * @license    https://idpay.ir/
+ */
+
 require_once(dirname(__FILE__) . '/../../config.php');
 require_once("lib.php");
-//require_once($CFG->libdir . '/eventslib.php');
 require_once($CFG->libdir . '/enrollib.php');
 require_once($CFG->libdir . '/filelib.php');
 global $CFG, $_SESSION, $USER, $DB, $OUTPUT;
@@ -37,24 +43,30 @@ $MerchantID = $plugininstance->get_config('merchant_id');
 $testing = $plugininstance->get_config('checkproductionmode');
 $Price = $_SESSION['totalcost'];
 $Authority = $_GET['Authority'];
-
-
-$data = new stdClass();
 $plugin = enrol_get_plugin('idpay');
 $today = date('Y-m-d');
 
 
 $status = $_POST['status'];
-$order_id = $_GET['order_id'];
+$order_id = $_POST['order_id'];
 $pid = $_POST['id'];
+
+//dosent exist order
+if (!$order = $DB->get_record('enrol_idpay', ['id' => $order_id])) {
+    $msg = other_status_messages();
+    echo '<div style="color:red; font-family:tahoma; direction:rtl; text-align:right">' . $msg . '<br/></div>';
+    die;
+}
 
 
 if ($status == '10') {
+
+    //set params
     $api_key = $plugininstance->get_config('api_key');
-    $sandbox = $plugininstance->get_config('sand_box');
+    $sandbox = $plugininstance->get_config('sandbox');
     $params = array('id' => $pid, 'order_id' => $order_id);
 
-
+    //send request to idpay and get response
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, 'https://api.idpay.ir/v1.1/payment/verify');
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
@@ -71,11 +83,12 @@ if ($status == '10') {
 
     if ($http_status != 200) {
         $msg = sprintf('خطا هنگام ایجاد تراکنش. وضعیت خطا: %s - کد خطا: %s - پیام خطا: %s', $http_status, $result->error_code, $result->error_message);
+        $order->log = $msg;
+        $DB->update_record('enrol_idpay', $order);
         echo '<div style="color:red; font-family:tahoma; direction:rtl; text-align:right">' . $msg . '<br/></div>';
         exit();
 
     } else {
-
 
         $verify_status = empty($result->status) ? NULL : $result->status;
         $verify_track_id = empty($result->track_id) ? NULL : $result->track_id;
@@ -84,69 +97,54 @@ if ($status == '10') {
         $hashed_card_no = empty($result->payment->hashed_card_no) ? NULL : $result->payment->hashed_card_no;
         $card_no = empty($result->payment->hashed_card_no) ? NULL : $result->payment->hashed_card_no;
 
-
         if (empty($verify_status) || empty($verify_track_id) || empty($verify_amount) || $verify_status < 100 || $verify_order_id !== $order_id) {
-
-            $msgForSaveDataTDataBase = $this->otherStatusMessages(1000) . "کد پیگیری :  $verify_track_id " . "شماره کارت :  $card_no " . "شماره کارت رمزنگاری شده : $hashed_card_no ";
-
+            $msg = other_status_messages();
+            $order->log = $msg;
+            $DB->update_record('enrol_idpay', $order);
+            echo '<div style="color:red; font-family:tahoma; direction:rtl; text-align:right">' . $msg . '<br/></div>';
+            die;
 
         } else {
 
-
-            if ($verify_order_id !== $order_id /*or $data->reason_code !== $result->id*/) {
-                $msgForSaveDataTDataBase = $this->otherStatusMessages(0) . "کد پیگیری :  $verify_track_id " . "شماره کارت :  $card_no " . "شماره کارت رمزنگاری شده : $hashed_card_no ";
-                die($msg);
-
+            //check double spending
+            if ($verify_order_id !== $order_id or $order->idpay_id !== $result->id) {
+                $msg = other_status_messages(0);
+                $order->log = $msg;
+                $DB->update_record('enrol_idpay', $order);
+                echo '<div style="color:red; font-family:tahoma; direction:rtl; text-align:right">' . $msg . '<br/></div>';
+                die;
             } else {
 
                 $Refnumber = $res->RefID; //Transaction number
                 $Resnumber = $res->RefID;//Your Order ID
                 $Status = $res->Status;
                 $PayPrice = ($Price / 10);
-
-
-                $data = $DB->get_record('enrol_idpay', ['id' => $order_id]);
-
-
-                $coursename = $DB->get_field('course', 'fullname', ['id' => $_SESSION['courseid']]);
-                $data->userid = $_SESSION['userid'];
-                $data->courseid = $_SESSION['courseid'];
-                $data->instanceid = $_SESSION['instanceid'];
                 $coursecost = $DB->get_record('enrol', ['enrol' => 'idpay', 'courseid' => $data->courseid]);
                 $time = strtotime($today);
                 $paidprice = $coursecost->cost;
-                $data->amount = $paidprice;
-                $data->refnumber = $Refnumber;
-                $data->orderid = $Resnumber;
-                $data->payment_status = $Status;
-                $data->timeupdated = time();
-                $data->item_name = $coursename;
-                $data->receiver_email = $USER->email;
-                $data->receiver_id = $_SESSION['userid'];
+                $order->payment_status = $status;
+                $order->timeupdated = time();
 
 
-
-
-                if (!$user = $DB->get_record("user", ["id" => $data->userid])) {
-                    message_idpay_error_to_admin("Not a valid user id", $data);
+                if (!$user = $DB->get_record("user", ["id" => $order->userid])) {
+                    message_idpay_error_to_admin(other_status_messages(), $order);
                     die;
                 }
-                if (!$course = $DB->get_record("course", ["id" => $data->courseid])) {
-                    message_idpay_error_to_admin("Not a valid course id", $data);
+                if (!$course = $DB->get_record("course", ["id" => $order->courseid])) {
+                    message_idpay_error_to_admin(other_status_messages(), $order);
                     die;
                 }
                 if (!$context = context_course::instance($course->id, IGNORE_MISSING)) {
-                    message_idpay_error_to_admin("Not a valid context id", $data);
+                    message_idpay_error_to_admin(other_status_messages(), $order);
                     die;
                 }
-                if (!$plugin_instance = $DB->get_record("enrol", ["id" => $data->instanceid, "status" => 0])) {
-                    message_idpay_error_to_admin("Not a valid instance id", $data);
+                if (!$plugin_instance = $DB->get_record("enrol", ["id" => $order->instanceid, "status" => 0])) {
+                    message_idpay_error_to_admin(other_status_messages(), $order);
                     die;
                 }
 
                 $coursecontext = context_course::instance($course->id, IGNORE_MISSING);
 
-                // Check that amount paid is the correct amount
                 if ((float)$plugin_instance->cost <= 0) {
                     $cost = (float)$plugin->get_config('cost');
                 } else {
@@ -160,8 +158,7 @@ if ($status == '10') {
                 $data->item_name = $course->fullname;
 
                 // ALL CLEAR !
-
-                $DB->update_record('enrol_idpay', $data);
+                $DB->update_record('enrol_idpay', $order);
 
                 if ($plugin_instance->enrolperiod) {
                     $timestart = time();
@@ -171,12 +168,11 @@ if ($status == '10') {
                     $timeend = 0;
                 }
 
-                // Enrol user
+                // Enrol user    die('s');
                 $plugin->enrol_user($plugin_instance, $user->id, $plugin_instance->roleid, $timestart, $timeend);
 
                 // Pass $view=true to filter hidden caps if the user cannot see them
-                if ($users = get_users_by_capability($context, 'moodle/course:update', 'u.*', 'u.id ASC',
-                    '', '', '', '', false, true)) {
+                if ($users = get_users_by_capability($context, 'moodle/course:update', 'u.*', 'u.id ASC', '', '', '', '', false, true)) {
                     $users = sort_by_roleassignment_authority($users, $context);
                     $teacher = array_shift($users);
                 } else {
@@ -187,7 +183,6 @@ if ($status == '10') {
                 $mailteachers = $plugin->get_config('mailteachers');
                 $mailadmins = $plugin->get_config('mailadmins');
                 $shortname = format_string($course->shortname, true, array('context' => $context));
-
 
                 if (!empty($mailstudents)) {
                     $a = new stdClass();
@@ -229,10 +224,10 @@ if ($status == '10') {
                 }
 
                 if (!empty($mailadmins)) {
-
                     $a->course = format_string($course->fullname, true, array('context' => $coursecontext));
                     $a->user = fullname($user);
                     $admins = get_admins();
+
                     foreach ($admins as $admin) {
                         $eventdata = new \core\message\message();
                         $eventdata->courseid = $course->id;
@@ -250,21 +245,25 @@ if ($status == '10') {
                     }
                 }
 
+                $msgForSaveDataTDataBase = "کد پیگیری :  $verify_track_id " . "شماره کارت :  $card_no " . "شماره کارت رمزنگاری شده : $hashed_card_no ";
+                $order->log = $msgForSaveDataTDataBase;
+                $DB->update_record('enrol_idpay', $order);
                 echo '<h3 style="text-align:center; color: green;">با تشکر از شما، پرداخت شما با موفقیت انجام شد و به  درس انتخاب شده افزوده شدید.</h3>';
+                echo "<h3 style='text-align:center; color: green;'>کد پیگیری :  $verify_track_id  </h3>";
                 echo '<div class="single_button" style="text-align:center;"><a href="' . $CFG->wwwroot . '/course/view.php?id=' . $course->id . '"><button>ورود به درس خریداری شده</button></a></div>';
-
             }
         }
 
     }
 
-
 } elseif ($status !== 10) {
 
     $msg = other_status_messages($status);
+    $order->log = $msg;
+    $msg = other_status_messages($status);
+    $DB->update_record('enrol_idpay', $order);
     echo '<div style="color:red; font-family:tahoma; direction:rtl; text-align:right">' . $msg . '<br/></div>';
 }
-
 
 //----------------------------------------------------- HELPER FUNCTIONS --------------------------------------------------------------------------
 
@@ -278,7 +277,6 @@ function message_idpay_error_to_admin($subject, $data)
     foreach ($data as $key => $value) {
         $message .= "$key => $value\n";
     }
-
     $eventdata = new \core\message\message();
     $eventdata->modulename = 'moodle';
     $eventdata->component = 'enrol_idpay';

@@ -1,13 +1,16 @@
 <div align="center">
-
+<?php
+$idpayicon = $CFG->wwwroot.'/enrol/idpay/pic/icon.svg';
+?>
 <p><?php print_string("paymentrequired") ?></p>
 <p><b><?php echo $instancename; ?></b></p>
 <p><b><?php echo get_string("cost").": {$instance->currency} {$localisedcost}"; ?></b></p>
-<p><img alt="<?php print_string('idpayaccepted', 'enrol_idpay') ?>" src="https://www.idpay.com/en_US/i/logo/PayPal_mark_60x38.gif" /></p>
+<!--<p><img alt="<?php print_string('idpayaccepted', 'enrol_idpay') ?>" src="<?php echo $idpayicon ?>" /></p>-->
 <p><?php print_string("paymentinstant") ?></p>
 <?php
     $idpayurl = $CFG->wwwroot.'/enrol/idpay/request.php';
 ?>
+
 <form action="<?php echo $idpayurl ?>" method="post">
 
 <input type="hidden" name="item_name" value="<?php p($coursefullname) ?>" />
