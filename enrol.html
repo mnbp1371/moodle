@@ -1,15 +1,16 @@
 <div align="center">
 <?php
-$idpayicon = $CFG->wwwroot.'/enrol/idpay/pic/icon.svg';
+$plugininstance = new enrol_idpay_plugin();
 ?>
 <p><?php print_string("paymentrequired") ?></p>
 <p><b><?php echo $instancename; ?></b></p>
-<p><b><?php echo get_string("cost").": {$instance->currency} {$localisedcost}"; ?></b></p>
+<p><b><?php echo get_string("cost").": {$plugininstance->get_config('currency')} {$localisedcost}"; ?></b></p>
 <!--<p><img alt="<?php print_string('idpayaccepted', 'enrol_idpay') ?>" src="<?php echo $idpayicon ?>" /></p>-->
 <p><?php print_string("paymentinstant") ?></p>
 <?php
     $idpayurl = $CFG->wwwroot.'/enrol/idpay/request.php';
 ?>
+
 
 <form action="<?php echo $idpayurl ?>" method="post">
 

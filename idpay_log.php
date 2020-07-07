@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @package    enrol_idpay
  * @copyright  IDPay
@@ -9,7 +8,6 @@
 
 require_once(dirname(__FILE__) . '/../../config.php');
 require_once("lib.php");
-//require_once($CFG->libdir . '/eventslib.php');
 require_once($CFG->libdir . '/enrollib.php');
 require_once($CFG->libdir . '/filelib.php');
 global $CFG, $_SESSION, $USER, $DB, $OUTPUT;
@@ -18,18 +16,16 @@ $plugininstance = new enrol_idpay_plugin();
 $PAGE->set_context($systemcontext);
 $PAGE->set_pagelayout('admin');
 $PAGE->set_url('/enrol/idpay/verify.php');
+
+if (!is_siteadmin()) {
+  header("HTTP/1.0 404 Not Found");
+  die;
+}
+
 echo $OUTPUT->header();
-$MerchantID = $plugininstance->get_config('merchant_id');
-$testing = $plugininstance->get_config('checkproductionmode');
-$Price = $_SESSION['totalcost'];
 $Authority = $_GET['Authority'];
 
 $prifix = $DB->get_prefix();
-
-if (!is_siteadmin()) {
-    die;
-}
-
 $sql = "select * from mdl_enrol_idpay";
 $db = $DB->get_records_sql($sql);
 

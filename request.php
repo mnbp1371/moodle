@@ -1,5 +1,4 @@
 ﻿<?php
-
 /**
  * @package    enrol_idpay
  * @copyright  IDPay
@@ -17,6 +16,13 @@ $systemcontext = context_system::instance();
 $PAGE->set_context($systemcontext);
 $plugininstance = new enrol_idpay_plugin();
 
+if ($plugininstance->get_config('currency') !== "IRR") {
+  echo $OUTPUT->header();
+  echo '<h3 dir="rtl" style="text-align:center; color: red;">' . 'واحد پولی پشتیبانی نمیشود.' . '</h3>';
+  echo '<div class="single_button" style="text-align:center;"><a href="' . $CFG->wwwroot . '/enrol/index.php?id=' . $_POST['course_id'] . '"><button> بازگشت به صفحه قبلی  </button></a></div>';
+  echo $OUTPUT->footer();
+  exit;
+}
 
 if (!empty($_POST['multi'])) {
     $instance_array = unserialize($_POST['instances']);
@@ -31,11 +37,10 @@ if (!empty($_POST['multi'])) {
 $_SESSION['totalcost'] = $_POST['amount'];
 $_SESSION['userid'] = $USER->id;
 
-
 //make information
 $api_key = $plugininstance->get_config('api_key');
 $sandbox = $plugininstance->get_config('sandbox');
-$amount = $_POST['amount'];
+$amount = (float)$_POST['amount'];
 $mail = $USER->email;
 $callback = $CFG->wwwroot . "/enrol/idpay/verify.php?order_id=$order_id";
 $description = 'پرداخت شهریه ' . $_POST['item_name'];
@@ -43,8 +48,6 @@ $phone = $USER->phone1;
 $user_name = $USER->firstname . ' ' . $USER->lastname;
 $item_name = $_POST['item_name'];
 $course_id = (int)$_POST['course_id'];
-
-
 
 $data = new stdClass();
 $data->amount = $amount;
@@ -57,10 +60,9 @@ $data->instanceid = $_POST['instance_id'];
 $data->log = "در حال انتقال به بانک";
 $order_id = $DB->insert_record("enrol_idpay", $data);
 
-
 $params = array(
     'order_id' => $order_id,
-    'amount' => ($amount / 10),
+    'amount' => $amount,
     'name' => $user_name,
     'phone' => $Mobile,
     'mail' => $Email,
@@ -101,4 +103,3 @@ if ($http_status != 201 || empty($result) || empty($result->id) || empty($result
     Header("Location: $result->link");
     exit;
 }
-

@@ -44,8 +44,7 @@ class enrol_idpay_edit_form extends moodleform {
         $mform->setType('cost', PARAM_RAW); // Use unformat_float to get real value.
         $mform->setDefault('cost', format_float($plugin->get_config('cost'), 2, true));
         $idpaycurrencies = $plugin->get_currencies();
-        $mform->addElement('select', 'currency', get_string('currency', 'enrol_idpay'), $idpaycurrencies);
-        $mform->setDefault('currency', $plugin->get_config('currency'));
+
         if ($instance->id) {
             $roles = get_default_enrol_roles($context, $instance->roleid);
         } else {
@@ -53,7 +52,6 @@ class enrol_idpay_edit_form extends moodleform {
         }
         $mform->addElement('select', 'roleid', get_string('assignrole', 'enrol_idpay'), $roles);
         $mform->setDefault('roleid', $plugin->get_config('roleid'));
-
 
         $mform->addElement('duration', 'enrolperiod', get_string('enrolperiod', 'enrol_idpay'), array('optional' => true, 'defaultunit' => 86400));
         $mform->setDefault('enrolperiod', $plugin->get_config('enrolperiod'));

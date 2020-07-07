@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-
 /**
  * @package    enrol_idpay
  * @copyright  IDPay
@@ -24,9 +23,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-
 if ($ADMIN->fulltree) {
-
 
     //--- my order history ------------------------------------------------------------------------------------------
     $previewnode = $PAGE->navigation->add((get_string('idpay_history', 'enrol_idpay')), new moodle_url('/enrol/idpay/idpay_log.php'), navigation_node::TYPE_CONTAINER);
@@ -36,6 +33,8 @@ if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_heading('enrol_idpay_settings', '', get_string('pluginname_desc', 'enrol_idpay')));
 
     $settings->add(new admin_setting_configtext('enrol_idpay/api_key', get_string('api_key', 'enrol_idpay'), '', '', PARAM_RAW));;
+
+    $settings->add(new admin_setting_configtext('enrol_idpay/currency', get_string('currency', 'enrol_idpay'), '', '', PARAM_RAW));;
 
     $settings->add(new admin_setting_configcheckbox('enrol_idpay/sandbox', get_string('sandbox', 'enrol_idpay'), '', 0));
 

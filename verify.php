@@ -1,26 +1,4 @@
 ﻿﻿<?php
-/*
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Landing page of Organization Manager View (Approvels)
- *
- * @package    enrol
- * @subpackage idpay
- * @copyright  2018 SaeedSajadi <saeed.sajadi@gmail.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 /**
  * @package    enrol_idpay
  * @copyright  IDPay
@@ -39,13 +17,10 @@ $PAGE->set_context($systemcontext);
 $PAGE->set_pagelayout('admin');
 $PAGE->set_url('/enrol/idpay/verify.php');
 echo $OUTPUT->header();
-$MerchantID = $plugininstance->get_config('merchant_id');
-$testing = $plugininstance->get_config('checkproductionmode');
 $Price = $_SESSION['totalcost'];
 $Authority = $_GET['Authority'];
 $plugin = enrol_get_plugin('idpay');
 $today = date('Y-m-d');
-
 
 $status = $_POST['status'];
 $order_id = $_POST['order_id'];
@@ -57,7 +32,6 @@ if (!$order = $DB->get_record('enrol_idpay', ['id' => $order_id])) {
     echo '<div style="color:red; font-family:tahoma; direction:rtl; text-align:right">' . $msg . '<br/></div>';
     die;
 }
-
 
 if ($status == '10') {
 
@@ -79,7 +53,6 @@ if ($status == '10') {
     $result = curl_exec($ch);
     $result = json_decode($result);
     $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
 
     if ($http_status != 200) {
         $msg = sprintf('خطا هنگام ایجاد تراکنش. وضعیت خطا: %s - کد خطا: %s - پیام خطا: %s', $http_status, $result->error_code, $result->error_message);
@@ -124,7 +97,6 @@ if ($status == '10') {
                 $paidprice = $coursecost->cost;
                 $order->payment_status = $status;
                 $order->timeupdated = time();
-
 
                 if (!$user = $DB->get_record("user", ["id" => $order->userid])) {
                     message_idpay_error_to_admin(other_status_messages(), $order);
@@ -201,7 +173,6 @@ if ($status == '10') {
                     $eventdata->fullmessagehtml = '';
                     $eventdata->smallmessage = '';
                     message_send($eventdata);
-
                 }
 
                 if (!empty($mailteachers) && !empty($teacher)) {
